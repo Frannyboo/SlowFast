@@ -1,36 +1,45 @@
-# custom_dataset.py
 import os
+import torch
+import torch.utils.data
+import torchvision.io as io
+import torchvision.transforms as T
+
+from slowfast.datasets import utils as utils
 from slowfast.datasets.build import DATASET_REGISTRY
-from slowfast.datasets.video_dataset import VideoDataset
 
-@register_dataset("custom")
-class CustomDataset(VideoDataset):
-    """
-    Example custom dataset for PySlowFast.
-    Inherits everything from VideoDataset.
-    You just need to point DATA.PATH_TO_DATA_DIR in your config.
-    Directory format should be like:
-    
-    root/
-      train/
-        class1/
-          vid1.mp4
-          vid2.mp4
-        class2/
-          vid3.mp4
-      val/
-        class1/
-        class2/
-    """
 
+@DATASET_REGISTRY.register()
+class CustomDataset(torch.utils.data.Dataset):
     def __init__(self, cfg, split):
-        # split: "train", "val", or "test"
-        super().__init__(cfg, split)
+        self.cfg = cfg
+        self.split = split
+        self.data_path = os.path.join(cfg.DATA.PATH_TO_DATA_DIR, split)
+
+        # Assume structure: data_path/class_x/video.mp4
+        self.samples = []
+        classes = sorted(os.listdir(self.data_path))
+        self.class_to_idx = {cls: i for i, cls in enumerate(classes)}
+
+        for cls in classes:
+            cls_path = os.path.join(self.data_path, cls)
+            for fname in os.listdir(cls_path):
+                if fname.endswith(".mp4"):
+                    self.samples.append((os.path.join(cls_path, fname), self.class_to_idx[cls]))
+
+        # transforms
+        self.transform = T.Compose([
+            T.Resize((cfg.DATA.TRAIN_CROP_SIZE, cfg.DATA.TRAIN_CROP_SIZE)),
+            T.ConvertImageDtype(torch.float32),
+        ])
 
     def __getitem__(self, index):
-        """
-        Loads the video and label at the given index.
-        VideoDataset already handles decoding, sampling, and transforms.
-        """
-        frames, label, index, time_index, meta = super().__getitem__(index)
-        return frames, label, index, time_index, meta
+        video_path, label = self.samples[index]
+        frames, _, _ = io.read_video(video_path, pts_unit="sec")
+
+        # simple transform
+        frames = self.transform(frames)
+
+        return frames, label, index, 0  # keep 4 outputs for compatibility
+
+    def __len__(self):
+        return len(self.samples)
