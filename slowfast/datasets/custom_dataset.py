@@ -1,6 +1,6 @@
 # custom_dataset.py
 import os
-from slowfast.datasets import register_dataset
+from slowfast.datasets.build import DATASET_REGISTRY
 from slowfast.datasets.video_dataset import VideoDataset
 
 @register_dataset("custom")
