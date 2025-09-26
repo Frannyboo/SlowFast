@@ -9,7 +9,7 @@ from slowfast.datasets.build import DATASET_REGISTRY
 
 
 @DATASET_REGISTRY.register()
-class custom(torch.utils.data.Dataset):
+class Custom(torch.utils.data.Dataset):
     def __init__(self, cfg, split):
         self.cfg = cfg
         self.split = split
