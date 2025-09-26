@@ -22,6 +22,8 @@ class Custom(torch.utils.data.Dataset):
 
         for cls in classes:
             cls_path = os.path.join(self.data_path, cls)
+            if not os.path.isdir(cls_path):  # ✅ skip files
+                continue
             for fname in os.listdir(cls_path):
                 if fname.endswith(".mp4"):
                     self.samples.append((os.path.join(cls_path, fname), self.class_to_idx[cls]))
