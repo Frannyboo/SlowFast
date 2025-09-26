@@ -53,7 +53,7 @@ from slowfast.datasets import build_dataset
 from slowfast.datasets import DATASET_REGISTRY
 
 @DATASET_REGISTRY.register()
-class Custom(Dataset):
+class Custom(torch.utils.data.Dataset):
     def __init__(self, cfg, split="train", num_frames=16, frame_rate=1):
         # ... your memory-efficient init code ...
         self.cfg = cfg
@@ -114,7 +114,7 @@ class Custom(Dataset):
 # from slowfast.datasets import DATASET_REGISTRY
 
 # @DATASET_REGISTRY.register()
-# class Custom(Dataset):
+# class Custom(torch.utils.data.Dataset):
 #     def __init__(self, cfg, split="train", num_frames=16, frame_rate=1, num_clips=3):
 #         self.cfg = cfg
 #         self.split = split
