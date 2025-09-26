@@ -13,7 +13,7 @@ class Custom(torch.utils.data.Dataset):
     def __init__(self, cfg, split):
         self.cfg = cfg
         self.split = split
-        self.data_path = os.path.join(cfg.DATA.PATH_TO_DATA_DIR, split)
+        self.data_path = os.path.join(cfg.DATA.PATH_PREFIX, split)
 
         # Assume structure: data_path/class_x/video.mp4
         self.samples = []
