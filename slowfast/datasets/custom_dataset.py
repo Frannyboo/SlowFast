@@ -68,11 +68,15 @@ class Custom(torch.utils.data.Dataset):
         self.class_to_idx = {cls_name: i for i, cls_name in enumerate(self.classes)}
 
         self.samples = []
-        for cls_name in self.classes:
-            cls_folder = os.path.join(self.data_path, cls_name)
+        for cls in os.listdir(split_dir):
+            cls_folder = os.path.join(split_dir, cls)
+            if not os.path.isdir(cls_folder):  # skip files like label_map.txt
+                continue
             for vid in os.listdir(cls_folder):
-                if vid.endswith(".avi") or vid.endswith(".mp4"):
-                    self.samples.append((os.path.join(cls_folder, vid), self.class_to_idx[cls_name]))
+                if not vid.endswith((".mp4", ".avi", ".mov")):
+                    continue
+                self.data.append(os.path.join(cls_folder, vid))
+                self.labels.append(class_to_idx[cls])
 
         print(f"Loaded {len(self.samples)} videos from {len(self.classes)} classes")
 
