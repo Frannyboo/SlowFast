@@ -55,29 +55,33 @@ from slowfast.datasets import DATASET_REGISTRY
 @DATASET_REGISTRY.register()
 class Custom(torch.utils.data.Dataset):
     def __init__(self, cfg, split="train", num_frames=16, frame_rate=1):
-        # ... your memory-efficient init code ...
         self.cfg = cfg
         self.split = split
         self.num_frames = num_frames
         self.frame_rate = frame_rate
-
+    
+        # Path to the split (train/val/test)
         self.data_path = os.path.join(cfg.DATA.PATH_PREFIX, split)
         assert os.path.exists(self.data_path), f"Path not found: {self.data_path}"
-
-        self.classes = sorted(os.listdir(self.data_path))
+    
+        # Collect class names
+        self.classes = sorted([
+            d for d in os.listdir(self.data_path)
+            if os.path.isdir(os.path.join(self.data_path, d))
+        ])
         self.class_to_idx = {cls_name: i for i, cls_name in enumerate(self.classes)}
-
+    
+        # Collect video paths + labels
         self.samples = []
-        for cls in os.listdir(split_dir):
-            cls_folder = os.path.join(split_dir, cls)
-            if not os.path.isdir(cls_folder):  # skip files like label_map.txt
-                continue
+        for cls in self.classes:
+            cls_folder = os.path.join(self.data_path, cls)
             for vid in os.listdir(cls_folder):
                 if not vid.endswith((".mp4", ".avi", ".mov")):
                     continue
-                self.data.append(os.path.join(cls_folder, vid))
-                self.labels.append(class_to_idx[cls])
-
+                video_path = os.path.join(cls_folder, vid)
+                label = self.class_to_idx[cls]
+                self.samples.append((video_path, label))
+    
         print(f"Loaded {len(self.samples)} videos from {len(self.classes)} classes")
 
     def __len__(self):
