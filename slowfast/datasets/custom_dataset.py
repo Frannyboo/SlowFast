@@ -111,7 +111,7 @@ class Custom(torch.utils.data.Dataset):
         clip = torch.nn.functional.interpolate(clip, size=(224, 224), mode='bilinear', align_corners=False)
 
         meta = {"video_path": video_path}
-        return clip, label, index, meta
+        return clip, label, index, 0, meta
 
 
 
