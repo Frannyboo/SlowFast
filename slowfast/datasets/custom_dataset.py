@@ -92,31 +92,46 @@ class Custom(torch.utils.data.Dataset):
     def __getitem__(self, index):
         video_path, label = self.samples[index]
 
-        # read_video returns [T, H, W, C], convert to [T, C, H, W]
-        video, _, _ = read_video(video_path, pts_unit='sec')
-        video = video.permute(0, 3, 1, 2)
+        # --- Read video ---
+        try:
+            video, _, _ = read_video(video_path, pts_unit="sec")  # [T, H, W, C]
+        except Exception as e:
+            print(f"Error reading {video_path}: {e}")
+            # return blank clip if corrupted
+            clip = torch.zeros((3, self.num_frames, 224, 224))
+            return clip, torch.tensor(0), torch.tensor(index), torch.tensor(0), {"video_path": video_path}
 
-        # pad / sample frames
+        # --- Convert to [T, C, H, W] ---
+        video = video.permute(0, 3, 1, 2)  # [T, C, H, W]
+
+        # --- Pad if too short ---
         num_total_frames = video.shape[0]
         if num_total_frames < self.num_frames * self.frame_rate:
             pad = self.num_frames * self.frame_rate - num_total_frames
             pad_frames = video[-1:].repeat(pad, 1, 1, 1)
             video = torch.cat([video, pad_frames], dim=0)
 
+        # --- Frame sampling ---
         start_idx = random.randint(0, max(0, video.shape[0] - self.num_frames * self.frame_rate))
         indices = start_idx + torch.arange(0, self.num_frames * self.frame_rate, self.frame_rate)
+        indices = indices.clamp(0, video.shape[0] - 1)  # avoid OOB
         clip = video[indices]
 
+        # --- Normalize + resize ---
         clip = clip.float() / 255.0
-        clip = torch.nn.functional.interpolate(clip, size=(224, 224), mode='bilinear', align_corners=False)
+        clip = F.interpolate(clip, size=(224, 224), mode="bilinear", align_corners=False)  # [T, C, H, W]
 
-        # make sure label and time are tensors
-        label = torch.tensor(label, dtype=torch.long)
-        time = torch.tensor(0)  # instead of raw int
-    
-        meta = {"video_path": video_path}
-    
-        return clip, label, index, time, meta
+        # --- Rearrange to [C, T, H, W] ---
+        clip = clip.permute(1, 0, 2, 3)
+
+        # --- Return 5-tuple ---
+        return (
+            clip,                                # [C, T, H, W]
+            torch.tensor(label, dtype=torch.long),
+            torch.tensor(index, dtype=torch.long),
+            torch.tensor(0, dtype=torch.long),   # dummy time
+            {"video_path": video_path}           # meta dict
+        )
 
 
 # from torch.utils.data import Dataset
