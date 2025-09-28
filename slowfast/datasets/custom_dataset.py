@@ -120,7 +120,10 @@ class Custom(torch.utils.data.Dataset):
 
         # --- Normalize + resize ---
         clip = clip.float() / 255.0
-        clip = F.interpolate(clip, size=(224, 224), mode="bilinear", align_corners=False)  # [T, C, H, W]
+        clip = torch.stack([
+            F.interpolate(frame.unsqueeze(0), size=(224, 224), mode="bilinear", align_corners=False).squeeze(0)
+            for frame in clip
+        ])  # still [T, C, 224, 224]
 
         # --- Rearrange to [C, T, H, W] ---
         clip = clip.permute(1, 0, 2, 3)
