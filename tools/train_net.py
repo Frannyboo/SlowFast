@@ -92,11 +92,11 @@ def train_epoch(
                 index = index.cuda(non_blocking=True)
                 time = time.cuda(non_blocking=True)
             for key, val in meta.items():
-                if isinstance(val, (list,)):
-                    for i in range(len(val)):
-                        val[i] = val[i].cuda(non_blocking=True)
-                else:
+                if torch.is_tensor(val):
                     meta[key] = val.cuda(non_blocking=True)
+                elif isinstance(val, (list, tuple)):
+                    meta[key] = [v.cuda(non_blocking=True) for v in val if torch.is_tensor(v)]
+                # else: leave it as-is (strings, paths, etc.)
 
         batch_size = (
             inputs[0][0].size(0) if isinstance(inputs[0], list) else inputs[0].size(0)
