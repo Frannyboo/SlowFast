@@ -5,6 +5,7 @@ import torchvision.io as io
 import torchvision.transforms as T
 from torchvision.io import read_video
 import random
+import torch.nn.functional as F
 
 # from slowfast.datasets import utils as utils
 # from slowfast.datasets.build import DATASET_REGISTRY
