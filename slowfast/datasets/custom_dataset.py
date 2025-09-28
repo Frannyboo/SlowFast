@@ -110,9 +110,13 @@ class Custom(torch.utils.data.Dataset):
         clip = clip.float() / 255.0
         clip = torch.nn.functional.interpolate(clip, size=(224, 224), mode='bilinear', align_corners=False)
 
+        # make sure label and time are tensors
+        label = torch.tensor(label, dtype=torch.long)
+        time = torch.tensor(0)  # instead of raw int
+    
         meta = {"video_path": video_path}
-        return clip, label, index, 0, meta
-
+    
+        return clip, label, index, time, meta
 
 
 # from torch.utils.data import Dataset
