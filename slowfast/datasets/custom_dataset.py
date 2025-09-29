@@ -127,20 +127,11 @@ class Custom(torch.utils.data.Dataset):
 
         # --- Rearrange to [C, T, H, W] ---
         clip = clip.permute(1, 0, 2, 3)
-
-        # --- Slow pathway (sample every α-th frame) ---
-        alpha = 4  # temporal stride between Fast and Slow
-        slow_clip = clip[:, ::alpha, :, :]  # [C, T/alpha, H, W]
-        
-        # --- Fast pathway (full frame rate) ---
-        fast_clip = clip  # [C, T, H, W]
-        
-        # Stack into list
-        inputs = [slow_clip, fast_clip]
+        clip = clip.unsqueeze(0)     # (1, C, T, H, W) -> DataLoader stacks to (N, C, T, H, W)
 
         # --- Return 5-tuple ---
         return (
-            inputs,                                #list of [C, T, H, W] (will batch → [B, C, T, H, W])
+            clip,                                #list of [C, T, H, W] (will batch → [B, C, T, H, W])
             torch.tensor(label, dtype=torch.long),
             torch.tensor(index, dtype=torch.long),
             torch.tensor(0, dtype=torch.long),   # dummy time
