@@ -130,11 +130,11 @@ class Custom(torch.utils.data.Dataset):
         clip = clip.unsqueeze(0)     # (1, C, T, H, W) -> DataLoader stacks to (N, C, T, H, W)
 
         # If using X3D (single pathway), return a list of one tensor:
-        inputs = [clip]   # <-- CRITICAL: list, length == cfg.MODEL.NUM_PATHWAYS
+        #inputs = [clip]   # <-- CRITICAL: list, length == cfg.MODEL.NUM_PATHWAYS
 
         # --- Return 5-tuple ---
         return (
-            inputs,                                #list of [C, T, H, W] (will batch → [B, C, T, H, W])
+            clip,                                #list of [C, T, H, W] (will batch → [B, C, T, H, W])
             torch.tensor(label, dtype=torch.long),
             torch.tensor(index, dtype=torch.long),
             torch.tensor(0, dtype=torch.long),   # dummy time
