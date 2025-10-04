@@ -47,8 +47,8 @@ class Custom(torch.utils.data.Dataset):
         print(f"[CustomDataset] Loaded {len(self.samples)} videos from {len(self.classes)} classes.")
 
         # Pretrain normalization (Kinetics/ImageNet style)
-        self.mean = torch.tensor([0.45, 0.45, 0.45]).view(3, 1, 1)
-        self.std = torch.tensor([0.225, 0.225, 0.225]).view(3, 1, 1)
+        self.mean = torch.tensor([0.45, 0.45, 0.45]).view(3, 1, 1, 1)
+        self.std = torch.tensor([0.225, 0.225, 0.225]).view(3, 1, 1, 1)
 
     def __len__(self):
         return len(self.samples)
