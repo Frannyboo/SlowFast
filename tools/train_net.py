@@ -720,30 +720,6 @@ def train(cfg):
                 cfg,
                 scaler if cfg.TRAIN.MIXED_PRECISION else None,
             )
-
-        # -------------------------------
-        # Save BEST.PTH if accuracy improves
-        # -------------------------------
-        if cfg.TRAIN.ENABLE and cfg.TEST.ENABLE:
-            # After eval, stats are logged with top1_err
-            top1_err = stats["top1_err"]
-            top1_acc = 100.0 - top1_err
-    
-            best_acc_file = os.path.join(cfg.OUTPUT_DIR, "best_acc.txt")
-            best_ckpt_file = os.path.join(cfg.OUTPUT_DIR, "best.pth")
-    
-            if not os.path.exists(best_acc_file):
-                with open(best_acc_file, "w") as f:
-                    f.write(str(top1_acc))
-                torch.save(model.state_dict(), best_ckpt_file)
-            else:
-                with open(best_acc_file, "r") as f:
-                    best_acc = float(f.read())
-                if top1_acc > best_acc:
-                    with open(best_acc_file, "w") as f:
-                        f.write(str(top1_acc))
-                    torch.save(model.state_dict(), best_ckpt_file)
-                    print(f"✅ New best model saved with acc={top1_acc:.2f}%")
                     
         # Evaluate the model on validation set.
         if is_eval_epoch:
@@ -756,6 +732,30 @@ def train(cfg):
                 train_loader,
                 writer,
             )
+
+            # ---------------------------
+            # Save best.pth after eval
+            # ---------------------------
+            val_top1 = val_meter.mb_top1.get_win_median()
+            val_top5 = val_meter.mb_top5.get_win_median()
+            top1_acc = 100.0 - val_top1
+        
+            best_acc_file = os.path.join(cfg.OUTPUT_DIR, "best_acc.txt")
+            best_ckpt_file = os.path.join(cfg.OUTPUT_DIR, "best.pth")
+        
+            if not os.path.exists(best_acc_file):
+                with open(best_acc_file, "w") as f:
+                    f.write(str(top1_acc))
+                torch.save(model.state_dict(), best_ckpt_file)
+            else:
+                with open(best_acc_file, "r") as f:
+                    best_acc = float(f.read())
+                if top1_acc > best_acc:
+                    with open(best_acc_file, "w") as f:
+                        f.write(str(top1_acc))
+                    torch.save(model.state_dict(), best_ckpt_file)
+                    print(f"✅ New best model saved with acc={top1_acc:.2f}%")
+    
     if (
         start_epoch == cfg.SOLVER.MAX_EPOCH and not cfg.MASK.ENABLE
     ):  # final checkpoint load
