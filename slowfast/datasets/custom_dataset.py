@@ -15,7 +15,7 @@ from slowfast.datasets import DATASET_REGISTRY
 
 
 @DATASET_REGISTRY.register()
-class Custom(Dataset):
+class Custom(torch.utils.data.Dataset):
     def __init__(self, cfg, split="train", num_frames=16, frame_rate=2):
         self.cfg = cfg
         self.split = split
