@@ -5,6 +5,7 @@
 
 import math
 import pprint
+import shutil, os, torch
 
 import numpy as np
 
@@ -755,6 +756,20 @@ def train(cfg):
                         f.write(str(top1_acc))
                     torch.save(model.state_dict(), best_ckpt_file)
                     print(f"✅ New best model saved with acc={top1_acc:.2f}%")
+
+            # Copy to Kaggle working dir for easy download
+            ckpt_dir = os.path.join(cfg.OUTPUT_DIR, "checkpoints")
+            os.makedirs(ckpt_dir, exist_ok=True)
+            
+            latest_ckpt = os.path.join(ckpt_dir, f"checkpoint_epoch_{cur_epoch}.pyth")
+            best_ckpt = os.path.join(cfg.OUTPUT_DIR, "best.pth")
+            
+            if os.path.exists(latest_ckpt):
+                shutil.copyfile(latest_ckpt, "/kaggle/working/last_checkpoint.pth")
+            
+            if os.path.exists(best_ckpt):
+                shutil.copyfile(best_ckpt, "/kaggle/working/best_checkpoint.pth")
+
     
     if (
         start_epoch == cfg.SOLVER.MAX_EPOCH and not cfg.MASK.ENABLE
