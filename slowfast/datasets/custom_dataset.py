@@ -54,55 +54,56 @@ class Custom(torch.utils.data.Dataset):
         return len(self.samples)
 
     def __getitem__(self, index):
-        video_path, label = self.samples[index]
+    video_path, label = self.samples[index]
 
-        # --- Read video ---
-        try:
-            video, _, _ = read_video(video_path, pts_unit="sec")  # [T, H, W, C]
-        except Exception as e:
-            print(f"[CustomDataset] Error reading {video_path}: {e}")
-            # fallback dummy tensor
-            clip = torch.zeros((3, self.num_frames, 224, 224))
-            return [clip], torch.tensor(0), torch.tensor(index), torch.tensor(0), {"video_path": video_path}
+    # --- Read video ---
+    try:
+        video, _, _ = read_video(video_path, pts_unit="sec")  # [T, H, W, C]
+    except Exception as e:
+        print(f"[CustomDataset] Error reading {video_path}: {e}")
+        # fallback dummy tensor
+        clip = torch.zeros((3, self.num_frames, 224, 224))
+        return [clip], torch.tensor(0), torch.tensor(index), torch.tensor(0), {"video_path": video_path}
 
-        # [T, C, H, W]
-        video = video.permute(0, 3, 1, 2)
+    # --- Convert to [T, C, H, W] ---
+    video = video.permute(0, 3, 1, 2)  # -> [T, C, H, W]
 
-        # --- Handle short videos ---
-        required_len = self.num_frames * self.frame_rate
-        if video.shape[0] < required_len:
-            repeat_factor = (required_len + video.shape[0] - 1) // video.shape[0]
-            video = video.repeat(repeat_factor, 1, 1, 1)  # loop video
-        video = video[:required_len]  # trim extra
+    # --- Handle short videos (loop if too short) ---
+    required_len = self.num_frames * self.frame_rate
+    if video.shape[0] < required_len:
+        repeat_factor = (required_len + video.shape[0] - 1) // video.shape[0]
+        video = video.repeat(repeat_factor, 1, 1, 1)
+    video = video[:required_len]  # trim extra frames
 
-        # --- Frame sampling ---
-        start_idx = random.randint(0, max(0, video.shape[0] - required_len))
-        indices = start_idx + torch.arange(0, required_len, self.frame_rate)
-        indices = indices.clamp(0, video.shape[0] - 1)
-        clip = video[indices]  # [T, C, H, W]
+    # --- Frame sampling ---
+    start_idx = random.randint(0, max(0, video.shape[0] - required_len))
+    indices = start_idx + torch.arange(0, required_len, self.frame_rate)
+    indices = indices.clamp(0, video.shape[0] - 1)
+    clip = video[indices]  # [T, C, H, W]
 
-        # --- Normalize & resize (whole clip at once) ---
-        clip = clip.float() / 255.0                # [T, C, H, W]
-        clip = clip.permute(1, 0, 2, 3).unsqueeze(0)  # [1, C, T, H, W]
-        clip = F.interpolate(clip, size=(224, 224), mode="bilinear", align_corners=False)
-        clip = clip.squeeze(0)                     # [C, T, 224, 224]
-        clip = (clip - self.mean) / self.std
+    # --- Normalize and resize (whole clip at once) ---
+    clip = clip.float() / 255.0                  # [T, C, H, W]
+    clip = clip.permute(1, 0, 2, 3).unsqueeze(0)  # [1, C, T, H, W]
+    clip = F.interpolate(clip, size=(224, 224), mode="bilinear", align_corners=False)
+    clip = clip.squeeze(0)                        # [C, T, 224, 224]
+    clip = (clip - self.mean) / self.std          # normalization
 
-        # --- Pathway support (X3D = 1, SlowFast = 2) ---
-        inputs = [clip]  # single pathway
-        if self.cfg.MODEL.NUM_PATHWAYS == 2:
-            fast_pathway = clip
-            slow_pathway = clip[:, ::self.cfg.SLOWFAST.ALPHA, :, :]
-            inputs = [slow_pathway, fast_pathway]
+    # --- Pathway support (X3D = 1, SlowFast = 2) ---
+    inputs = [clip]  # single pathway
+    if self.cfg.MODEL.NUM_PATHWAYS == 2:
+        fast_pathway = clip
+        slow_pathway = clip[:, ::self.cfg.SLOWFAST.ALPHA, :, :]
+        inputs = [slow_pathway, fast_pathway]
 
-        # --- Return tuple ---
-        return (
-            inputs,
-            torch.tensor(label, dtype=torch.long),
-            torch.tensor(index, dtype=torch.long),
-            torch.tensor(0, dtype=torch.long),   # dummy time
-            {"video_path": video_path}
-        )
+    # --- Return tuple ---
+    return (
+        inputs,
+        torch.tensor(label, dtype=torch.long),
+        torch.tensor(index, dtype=torch.long),
+        torch.tensor(0, dtype=torch.long),   # dummy time
+        {"video_path": video_path}
+    )
+
 
 
 # @DATASET_REGISTRY.register()
