@@ -82,11 +82,23 @@ class Custom(torch.utils.data.Dataset):
         clip = video[indices]  # [T, C, H, W]
     
         # --- Normalize and resize (whole clip at once) ---
-        clip = clip.float() / 255.0                  # [T, C, H, W]
+        clip = clip.float() / 255.0  # [T, C, H, W]
+
+        # --- Make sure we have [N, C, T, H, W] ---
         clip = clip.permute(1, 0, 2, 3).unsqueeze(0)  # [1, C, T, H, W]
-        clip = F.interpolate(clip, size=(224, 224), mode="bilinear", align_corners=False)
-        clip = clip.squeeze(0)                        # [C, T, 224, 224]
-        clip = (clip - self.mean) / self.std          # normalization
+        
+        # --- Resize the *spatial* dims only ---
+        clip = F.interpolate(
+            clip, 
+            size=(clip.shape[2], 224, 224),  # Keep T same, resize H,W
+            mode="trilinear",                # Use trilinear for 3D tensors
+            align_corners=False
+        )
+        
+        # --- Normalize ---
+        clip = (clip - self.mean) / self.std
+        clip = clip.squeeze(0)  # [C, T, 224, 224]
+
     
         # --- Pathway support (X3D = 1, SlowFast = 2) ---
         inputs = [clip]  # single pathway
