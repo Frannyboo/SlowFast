@@ -721,7 +721,22 @@ def train(cfg):
                 cfg,
                 scaler if cfg.TRAIN.MIXED_PRECISION else None,
             )
-                    
+        
+        # ---------------------------
+        # Save checkpoints every epoch (always)
+        # ---------------------------
+        ckpt_dir = os.path.join(cfg.OUTPUT_DIR, "checkpoints")
+        os.makedirs(ckpt_dir, exist_ok=True)
+        
+        epoch_ckpt = os.path.join(ckpt_dir, f"checkpoint_epoch_{cur_epoch}.pth")
+        torch.save(model.state_dict(), epoch_ckpt)
+        
+        # Copy latest checkpoint to Kaggle working directory (easy to download)
+        try:
+            shutil.copyfile(epoch_ckpt, "/kaggle/working/last_checkpoint.pth")
+        except Exception as e:
+            print(f"[Warning] Could not copy last checkpoint: {e}")
+        
         # Evaluate the model on validation set.
         if is_eval_epoch:
             eval_epoch(
@@ -734,11 +749,8 @@ def train(cfg):
                 writer,
             )
 
-            # ---------------------------
-            # Save best.pth after eval
-            # ---------------------------
+            # Compute top-1 accuracy from val_meter
             val_top1 = val_meter.mb_top1.get_win_median()
-            val_top5 = val_meter.mb_top5.get_win_median()
             top1_acc = 100.0 - val_top1
         
             best_acc_file = os.path.join(cfg.OUTPUT_DIR, "best_acc.txt")
@@ -748,6 +760,7 @@ def train(cfg):
                 with open(best_acc_file, "w") as f:
                     f.write(str(top1_acc))
                 torch.save(model.state_dict(), best_ckpt_file)
+                print(f"✅ Saved initial best model with acc={top1_acc:.2f}%")
             else:
                 with open(best_acc_file, "r") as f:
                     best_acc = float(f.read())
@@ -756,19 +769,13 @@ def train(cfg):
                         f.write(str(top1_acc))
                     torch.save(model.state_dict(), best_ckpt_file)
                     print(f"✅ New best model saved with acc={top1_acc:.2f}%")
-
-            # Copy to Kaggle working dir for easy download
-            ckpt_dir = os.path.join(cfg.OUTPUT_DIR, "checkpoints")
-            os.makedirs(ckpt_dir, exist_ok=True)
-            
-            latest_ckpt = os.path.join(ckpt_dir, f"checkpoint_epoch_{cur_epoch}.pyth")
-            best_ckpt = os.path.join(cfg.OUTPUT_DIR, "best.pth")
-            
-            if os.path.exists(latest_ckpt):
-                shutil.copyfile(latest_ckpt, "/kaggle/working/last_checkpoint.pth")
-            
-            if os.path.exists(best_ckpt):
-                shutil.copyfile(best_ckpt, "/kaggle/working/best_checkpoint.pth")
+        
+            # Copy best model to Kaggle working dir
+            if os.path.exists(best_ckpt_file):
+                try:
+                    shutil.copyfile(best_ckpt_file, "/kaggle/working/best_checkpoint.pth")
+                except Exception as e:
+                    print(f"[Warning] Could not copy best checkpoint: {e}")
 
     
     if (
