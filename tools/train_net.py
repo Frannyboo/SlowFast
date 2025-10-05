@@ -750,7 +750,7 @@ def train(cfg):
             )
 
             # Compute top-1 accuracy from val_meter
-            val_top1 = val_meter.mb_top1.get_win_median()
+            val_top1 = val_meter.mb_top1_err.get_win_median()
             top1_acc = 100.0 - val_top1
         
             best_acc_file = os.path.join(cfg.OUTPUT_DIR, "best_acc.txt")
@@ -773,7 +773,7 @@ def train(cfg):
             # Copy best model to Kaggle working dir
             if os.path.exists(best_ckpt_file):
                 try:
-                    shutil.copyfile(best_ckpt_file, "/kaggle/working/best_checkpoint.pth")
+                    shutil.copyfile(best_ckpt_file, "/kaggle/working/x3d_runs/best_checkpoint.pth")
                 except Exception as e:
                     print(f"[Warning] Could not copy best checkpoint: {e}")
 
