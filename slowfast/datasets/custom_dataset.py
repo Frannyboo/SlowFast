@@ -102,7 +102,7 @@ class Custom(torch.utils.data.Dataset):
     
         # --- Pathway support (X3D = 1, SlowFast = 2) ---
         inputs = [clip]  # single pathway
-        if self.cfg.MODEL.NUM_PATHWAYS == 2:
+        if self.cfg.MODEL.ARCH in self.cfg.MODEL.MULTI_PATHWAY_ARCH:
             fast_pathway = clip
             slow_pathway = clip[:, ::self.cfg.SLOWFAST.ALPHA, :, :]
             inputs = [slow_pathway, fast_pathway]
