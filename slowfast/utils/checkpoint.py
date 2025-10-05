@@ -122,8 +122,8 @@ def save_checkpoint(path_to_job, model, optimizer, epoch, cfg, scaler=None):
         scaler (GradScaler): the mixed precision scale.
     """
     # Save checkpoints only from the master process.
-    if not du.is_master_proc(cfg.NUM_GPUS * cfg.NUM_SHARDS):
-        return
+    # if not du.is_master_proc(cfg.NUM_GPUS * cfg.NUM_SHARDS):
+    #     return
     # Ensure that the checkpoint dir exists.
     pathmgr.mkdirs(get_checkpoint_dir(path_to_job))
     # Omit the DDP wrapper in the multi-gpu setting.
