@@ -300,6 +300,9 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
     val_meter.iter_tic()
 
     for cur_iter, (inputs, labels, index, time, meta) in enumerate(val_loader):
+        if cur_iter == 0:
+        print(f"[DEBUG] Sample labels from first batch: {labels[:10].cpu().numpy()}")
+        print(f"[DEBUG] Label range: min={labels.min().item()}, max={labels.max().item()}")
         if cfg.NUM_GPUS:
             # Transferthe data to the current GPU device.
             if isinstance(inputs, (list,)):
