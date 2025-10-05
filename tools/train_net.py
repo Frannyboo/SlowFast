@@ -727,6 +727,34 @@ def train(cfg):
                 cfg,
                 scaler if cfg.TRAIN.MIXED_PRECISION else None,
             )
+        # ==========================================================
+        # ✅ FORCE CHECKPOINT SAVE (manual backup)
+        # ==========================================================
+        from pathlib import Path
+        
+        # Build checkpoint path
+        checkpoint_dir = Path(cfg.OUTPUT_DIR) / "checkpoints"
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)  # ensure folder exists
+        
+        # Filename with current epoch number
+        forced_ckpt_path = checkpoint_dir / f"forced_epoch_{cur_epoch + 1:05d}.pth"
+        
+        # Get model state dict safely (handles DDP models)
+        state_dict = (
+            model.module.state_dict() if hasattr(model, "module") else model.state_dict()
+        )
+        
+        # Build checkpoint dict
+        checkpoint = {
+            "epoch": cur_epoch + 1,
+            "model_state": state_dict,
+            "optimizer_state": optimizer.state_dict(),
+        }
+        
+        # Save the checkpoint manually
+        torch.save(checkpoint, forced_ckpt_path)
+        print(f"[FORCE SAVE] Checkpoint saved to {forced_ckpt_path}")
+
         
         # ---------------------------
         # Save checkpoints every epoch (always)
