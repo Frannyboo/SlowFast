@@ -6,6 +6,7 @@
 import math
 import pprint
 import shutil, os, torch
+from pathlib import Path
 
 import numpy as np
 
@@ -729,10 +730,9 @@ def train(cfg):
             )
         # ==========================================================
         # ✅ FORCE CHECKPOINT SAVE (manual backup)
-        # ==========================================================
-        from pathlib import Path
+        # ==========================================================        
+        #Build checkpoint path
         
-        # Build checkpoint path
         checkpoint_dir = Path(cfg.OUTPUT_DIR) / "checkpoints"
         checkpoint_dir.mkdir(parents=True, exist_ok=True)  # ensure folder exists
         
@@ -749,27 +749,13 @@ def train(cfg):
             "epoch": cur_epoch + 1,
             "model_state": state_dict,
             "optimizer_state": optimizer.state_dict(),
+            "cfg": cfg.dump(),
         }
         
         # Save the checkpoint manually
         torch.save(checkpoint, forced_ckpt_path)
         print(f"[FORCE SAVE] Checkpoint saved to {forced_ckpt_path}")
 
-        
-        # ---------------------------
-        # Save checkpoints every epoch (always)
-        # ---------------------------
-        ckpt_dir = os.path.join(cfg.OUTPUT_DIR, "checkpoints")
-        os.makedirs(ckpt_dir, exist_ok=True)
-        
-        epoch_ckpt = os.path.join(ckpt_dir, f"checkpoint_epoch_{cur_epoch}.pth")
-        torch.save(model.state_dict(), epoch_ckpt)
-        
-        # Copy latest checkpoint to Kaggle working directory (easy to download)
-        try:
-            shutil.copyfile(epoch_ckpt, "/kaggle/working/last_checkpoint.pth")
-        except Exception as e:
-            print(f"[Warning] Could not copy last checkpoint: {e}")
         
         # Evaluate the model on validation set.
         if is_eval_epoch:
