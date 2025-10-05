@@ -33,6 +33,7 @@ def make_checkpoint_dir(path_to_job):
             pathmgr.mkdirs(checkpoint_dir)
         except Exception:
             pass
+    print(f"[DEBUG] Created checkpoint directory")
     return checkpoint_dir
 
 
@@ -107,7 +108,10 @@ def is_checkpoint_epoch(cfg, cur_epoch, multigrid_schedule=None):
                 period = max((s[-1] - prev_epoch) // cfg.MULTIGRID.EVAL_FREQ + 1, 1)
                 return (s[-1] - 1 - cur_epoch) % period == 0
             prev_epoch = s[-1]
-
+    if (cur_epoch + 1) % cfg.TRAIN.CHECKPOINT_PERIOD == 0:
+        print(f"[DEBUG] Checkpoint should be saved")
+    else:
+        print(f"[DEBUG] Checkpoint should not be saved")
     return (cur_epoch + 1) % cfg.TRAIN.CHECKPOINT_PERIOD == 0
 
 
@@ -143,6 +147,7 @@ def save_checkpoint(path_to_job, model, optimizer, epoch, cfg, scaler=None):
     path_to_checkpoint = get_path_to_checkpoint(path_to_job, epoch + 1, cfg.TASK)
     with pathmgr.open(path_to_checkpoint, "wb") as f:
         torch.save(checkpoint, f)
+        print(f"[DEBUG] Checkpoint saved")
     return path_to_checkpoint
 
 
