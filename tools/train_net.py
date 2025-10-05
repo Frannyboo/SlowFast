@@ -408,6 +408,9 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
         val_meter.iter_tic()
 
     # Log epoch stats.
+    print(f"[DEBUG] Validation finished — processed {len(val_loader)} batches total.")
+    print(f"[DEBUG] Collected {len(val_meter.all_preds)} predictions so far.")
+    
     val_meter.log_epoch_stats(cur_epoch)
     # write to tensorboard format if available.
     if writer is not None:
