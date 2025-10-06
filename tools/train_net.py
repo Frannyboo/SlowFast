@@ -416,6 +416,36 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
     print(f"[DEBUG] Collected {len(val_meter.all_preds)} predictions so far.")
     
     val_meter.log_epoch_stats(cur_epoch)
+
+    # Compute top-1 accuracy from val_meter
+    val_top1 = val_meter.mb_top1_err.get_win_median()
+    top1_acc = 100.0 - val_top1
+
+    best_acc_file = os.path.join(cfg.OUTPUT_DIR, "best_acc.txt")
+    best_ckpt_file = os.path.join(cfg.OUTPUT_DIR, "best.pth")
+
+    if not os.path.exists(best_acc_file):
+        with open(best_acc_file, "w") as f:
+            f.write(str(top1_acc))
+        torch.save(model.state_dict(), best_ckpt_file)
+        print(f"✅ Saved initial best model with acc={top1_acc:.2f}%")
+    else:
+        with open(best_acc_file, "r") as f:
+            best_acc = float(f.read())
+        if top1_acc > best_acc:
+            with open(best_acc_file, "w") as f:
+                f.write(str(top1_acc))
+            torch.save(model.state_dict(), best_ckpt_file)
+            print(f"✅ New best model saved with acc={top1_acc:.2f}%")
+
+    # Copy best model to Kaggle working dir
+    if os.path.exists(best_ckpt_file):
+        try:
+            shutil.copyfile(best_ckpt_file, "/kaggle/working/x3d_runs/best_checkpoint.pth")
+        except Exception as e:
+            print(f"[Warning] Could not copy best checkpoint: {e}")
+            
+    
     # write to tensorboard format if available.
     if writer is not None:
         if cfg.DETECTION.ENABLE:
@@ -733,7 +763,7 @@ def train(cfg):
         # ==========================================================        
         #Build checkpoint path
         
-        checkpoint_dir = Path(cfg.OUTPUT_DIR) / "checkpoints"
+        checkpoint_dir = Path(cfg.OUTPUT_DIR)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)  # ensure folder exists
         
         # Filename with current epoch number
@@ -768,35 +798,6 @@ def train(cfg):
                 train_loader,
                 writer,
             )
-
-            # Compute top-1 accuracy from val_meter
-            val_top1 = val_meter.mb_top1_err.get_win_median()
-            top1_acc = 100.0 - val_top1
-        
-            best_acc_file = os.path.join(cfg.OUTPUT_DIR, "best_acc.txt")
-            best_ckpt_file = os.path.join(cfg.OUTPUT_DIR, "best.pth")
-        
-            if not os.path.exists(best_acc_file):
-                with open(best_acc_file, "w") as f:
-                    f.write(str(top1_acc))
-                torch.save(model.state_dict(), best_ckpt_file)
-                print(f"✅ Saved initial best model with acc={top1_acc:.2f}%")
-            else:
-                with open(best_acc_file, "r") as f:
-                    best_acc = float(f.read())
-                if top1_acc > best_acc:
-                    with open(best_acc_file, "w") as f:
-                        f.write(str(top1_acc))
-                    torch.save(model.state_dict(), best_ckpt_file)
-                    print(f"✅ New best model saved with acc={top1_acc:.2f}%")
-        
-            # Copy best model to Kaggle working dir
-            if os.path.exists(best_ckpt_file):
-                try:
-                    shutil.copyfile(best_ckpt_file, "/kaggle/working/x3d_runs/best_checkpoint.pth")
-                except Exception as e:
-                    print(f"[Warning] Could not copy best checkpoint: {e}")
-
     
     if (
         start_epoch == cfg.SOLVER.MAX_EPOCH and not cfg.MASK.ENABLE
