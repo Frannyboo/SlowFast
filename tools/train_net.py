@@ -436,7 +436,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
             with open(best_acc_file, "w") as f:
                 f.write(str(top1_acc))
             torch.save(model.state_dict(), best_ckpt_file)
-            print(f"✅ New best model saved with acc={top1_acc:.2f}%")
+            print(f"✅ New best model saved with acc={top1_acc:.3f}%")
 
     # Copy best model to Kaggle working dir
     if os.path.exists(best_ckpt_file):
