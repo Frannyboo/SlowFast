@@ -59,12 +59,19 @@ class Custom(torch.utils.data.Dataset):
         # --- Read video ---
         try:
             video, _, _ = read_video(video_path, pts_unit="sec")  # [T, H, W, C]
+            print("Successfully read videos")
         except Exception as e:
             print(f"[CustomDataset] Error reading {video_path}: {e}")
             # fallback dummy tensor
             clip = torch.zeros((3, self.num_frames, 224, 224))
             return [clip], torch.tensor(0), torch.tensor(index), torch.tensor(0), {"video_path": video_path}
-    
+
+        video, _, _ = read_video(video_path, pts_unit="sec")
+        if video.numel() == 0 or video.shape[0] == 0:
+            print(f"[CustomDataset] Empty video: {video_path}")
+            clip = torch.zeros((3, self.num_frames, 224, 224))
+            return [clip], torch.tensor(0), torch.tensor(index), torch.tensor(0), {"video_path": video_path}
+
         # --- Convert to [T, C, H, W] ---
         video = video.permute(0, 3, 1, 2)  # -> [T, C, H, W]
     
@@ -106,7 +113,8 @@ class Custom(torch.utils.data.Dataset):
             fast_pathway = clip
             slow_pathway = clip[:, ::self.cfg.SLOWFAST.ALPHA, :, :]
             inputs = [slow_pathway, fast_pathway]
-    
+
+        print(f"Loaded clip shape: {clip.shape}, label: {label}, path: {video_path}")
         # --- Return tuple ---
         return (
             inputs,
