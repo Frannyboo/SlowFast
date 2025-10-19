@@ -407,6 +407,11 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
                     )
 
             val_meter.update_predictions(preds, labels)
+            preds = preds.detach().cpu()
+            probs = torch.nn.functional.softmax(preds, dim=1)
+            pred_classes = torch.argmax(probs, dim=1)
+            print(f"[DEBUG] Predicted classes in this batch: {pred_classes.tolist()}")
+
 
         val_meter.log_iter_stats(cur_epoch, cur_iter)
         val_meter.iter_tic()
