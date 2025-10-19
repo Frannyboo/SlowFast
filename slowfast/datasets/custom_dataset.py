@@ -114,7 +114,7 @@ class Custom(torch.utils.data.Dataset):
             slow_pathway = clip[:, ::self.cfg.SLOWFAST.ALPHA, :, :]
             inputs = [slow_pathway, fast_pathway]
 
-        print(f"Loaded clip shape: {clip.shape}, label: {label}, path: {video_path}")
+        # print(f"Loaded clip shape: {clip.shape}, label: {label}, path: {video_path}")
         # --- Return tuple ---
         return (
             inputs,
