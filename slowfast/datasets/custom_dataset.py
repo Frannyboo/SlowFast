@@ -59,7 +59,7 @@ class Custom(torch.utils.data.Dataset):
         # --- Read video ---
         try:
             video, _, _ = read_video(video_path, pts_unit="sec")  # [T, H, W, C]
-            print("Successfully read videos")
+            # print("Successfully read videos")
         except Exception as e:
             print(f"[CustomDataset] Error reading {video_path}: {e}")
             # fallback dummy tensor
