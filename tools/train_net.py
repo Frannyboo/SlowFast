@@ -426,6 +426,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
     val_top1 = val_meter.mb_top1_err.get_win_median()
     top1_acc = 100.0 - val_top1
 
+    print(f"[DEBUG] Epoch accuracy: {top1_acc:.2f}%")
     best_acc_file = os.path.join(cfg.OUTPUT_DIR, "best_acc.txt")
     best_ckpt_file = os.path.join(cfg.OUTPUT_DIR, "best.pth")
 
