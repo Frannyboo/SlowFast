@@ -26,6 +26,16 @@ class Custom(torch.utils.data.Dataset):
         self.data_path = os.path.join(cfg.DATA.PATH_PREFIX, split)
         assert os.path.exists(self.data_path), f"Path not found: {self.data_path}"
 
+        self.video_list = []
+        for class_name in os.listdir(self.data_path):
+            class_dir = os.path.join(self.data_path, class_name)
+            if os.path.isdir(class_dir):
+                for f in os.listdir(class_dir):
+                    if f.endswith((".mp4", ".avi", ".mov")):
+                        self.video_list.append(os.path.join(class_dir, f))
+        
+        self.num_videos = len(self.video_list)
+
         # Collect classes
         self.classes = sorted([
             d for d in os.listdir(self.data_path)
