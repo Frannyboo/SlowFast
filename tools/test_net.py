@@ -61,7 +61,7 @@ def perform_test(test_loader, model, test_meter, cfg, writer=None):
                 inputs = inputs.cuda(non_blocking=True)
             if not isinstance(labels, list):
                 labels = labels.cuda(non_blocking=True)
-                index = index.cuda(non_blocking=True)
+                video_idx = video_idx.cuda(non_blocking=True)
                 time = time.cuda(non_blocking=True)
             for key, val in meta.items():
                 if torch.is_tensor(val):
