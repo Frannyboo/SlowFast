@@ -52,18 +52,23 @@ def perform_test(test_loader, model, test_meter, cfg, writer=None):
             # Transfer the data to the current GPU device.
             if isinstance(inputs, (list,)):
                 for i in range(len(inputs)):
-                    inputs[i] = inputs[i].cuda(non_blocking=True)
+                    if isinstance(inputs[i], (list,)):
+                        for j in range(len(inputs[i])):
+                            inputs[i][j] = inputs[i][j].cuda(non_blocking=True)
+                    else:
+                        inputs[i] = inputs[i].cuda(non_blocking=True)
             else:
                 inputs = inputs.cuda(non_blocking=True)
-            # Transfer the data to the current GPU device.
-            labels = labels.cuda()
-            video_idx = video_idx.cuda()
+            if not isinstance(labels, list):
+                labels = labels.cuda(non_blocking=True)
+                index = index.cuda(non_blocking=True)
+                time = time.cuda(non_blocking=True)
             for key, val in meta.items():
-                if isinstance(val, (list,)):
-                    for i in range(len(val)):
-                        val[i] = val[i].cuda(non_blocking=True)
-                else:
+                if torch.is_tensor(val):
                     meta[key] = val.cuda(non_blocking=True)
+                elif isinstance(val, (list, tuple)):
+                    meta[key] = [v.cuda(non_blocking=True) for v in val if torch.is_tensor(v)]
+                # else: leave it as-is (strings, paths, etc.)
         test_meter.data_toc()
 
         if cfg.DETECTION.ENABLE:
