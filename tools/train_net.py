@@ -278,6 +278,22 @@ def train_epoch(
 
     # Log epoch stats.
     train_meter.log_epoch_stats(cur_epoch)
+
+    # --- Compute true training accuracy at epoch-level ---
+    if len(train_meter.all_preds) > 0:
+        all_preds = torch.cat([p.cpu() for p in train_meter.all_preds], dim=0)
+        all_labels = torch.cat([l.cpu() for l in train_meter.all_labels], dim=0)
+    
+        top1 = (all_preds.argmax(dim=1) == all_labels).float().mean().item() * 100.0
+    
+        # Top-5 accuracy
+        _, pred_top5 = all_preds.topk(5, dim=1, largest=True, sorted=True)
+        top5 = (pred_top5.eq(all_labels.view(-1,1).expand_as(pred_top5))).any(dim=1).float().mean().item() * 100.0
+    
+        print(f"[EPOCH {cur_epoch}] True Training Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
+    # --------------------------------------------------------
+
+    
     train_meter.reset()
 
 
@@ -412,7 +428,6 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
             pred_classes = torch.argmax(probs, dim=1)
             print(f"[DEBUG] Predicted classes in this batch: {pred_classes.tolist()}")
 
-
         val_meter.log_iter_stats(cur_epoch, cur_iter)
         val_meter.iter_tic()
 
@@ -422,11 +437,22 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
     
     val_meter.log_epoch_stats(cur_epoch)
 
+    if len(val_meter.all_preds) > 0:
+            all_preds = torch.cat([p.cpu() for p in val_meter.all_preds], dim=0)
+            all_labels = torch.cat([l.cpu() for l in val_meter.all_labels], dim=0)
+        
+            top1 = (all_preds.argmax(dim=1) == all_labels).float().mean().item() * 100.0
+        
+            # Top-5 accuracy
+            _, pred_top5 = all_preds.topk(5, dim=1, largest=True, sorted=True)
+            top5 = (pred_top5.eq(all_labels.view(-1,1).expand_as(pred_top5))).any(dim=1).float().mean().item() * 100.0
+        
+            print(f"[EPOCH {cur_epoch}] True Validation Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
+
     # Compute top-1 accuracy from val_meter
     val_top1 = val_meter.mb_top1_err.get_win_median()
     top1_acc = 100.0 - val_top1
 
-    print(f"[DEBUG] Epoch accuracy: {top1_acc:.2f}%")
     best_acc_file = os.path.join(cfg.OUTPUT_DIR, "best_acc.txt")
     best_ckpt_file = os.path.join(cfg.OUTPUT_DIR, "best.pth")
 
@@ -465,7 +491,6 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
             writer.plot_eval(preds=all_preds, labels=all_labels, global_step=cur_epoch)
 
     val_meter.reset()
-
 
 def calculate_and_update_precise_bn(loader, model, num_iters=200, use_gpu=True):
     """
