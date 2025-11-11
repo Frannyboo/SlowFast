@@ -302,7 +302,7 @@ def train_epoch(
         _, pred_top5 = all_preds.topk(5, dim=1, largest=True, sorted=True)
         top5 = (pred_top5.eq(all_labels.view(-1, 1).expand_as(pred_top5))).any(dim=1).float().mean().item() * 100.0
     
-        print(f"[EPOCH {cur_epoch+1}] True Training Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
+        print(f"✅[EPOCH {cur_epoch+1}] True Training Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
     # --------------------------------------------------------
 
     
@@ -468,7 +468,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
         _, pred_top5 = all_preds.topk(5, dim=1, largest=True, sorted=True)
         top5 = (pred_top5.eq(all_labels.view(-1, 1).expand_as(pred_top5))).any(dim=1).float().mean().item() * 100.0
     
-        print(f"[EPOCH {cur_epoch+1}] True Validation Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
+        print(f"✅[EPOCH {cur_epoch+1}] True Validation Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
 
 
     # Compute top-1 accuracy from val_meter
