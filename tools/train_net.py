@@ -77,6 +77,9 @@ def train_epoch(
     # Explicitly declare reduction to mean.
     loss_fun = losses.get_loss_func(cfg.MODEL.LOSS_FUNC)(reduction="mean")
 
+    all_preds = []
+    all_labels = []
+    
     for cur_iter, (inputs, labels, index, time, meta) in enumerate(train_loader):
         # Transfer the data to the current GPU device.
         if cfg.NUM_GPUS:
@@ -144,6 +147,14 @@ def train_epoch(
             else:
                 # Compute the loss.
                 loss = loss_fun(preds, labels)
+
+            if cur_iter == 0 and cur_epoch == 0:
+                print(f"[DEBUG] preds shape: {preds.shape}, labels shape: {labels.shape}")
+            
+            # Store predictions and labels for full-epoch accuracy computation
+            all_preds.append(preds.detach().cpu())
+            all_labels.append(labels.detach().cpu())
+
 
         loss_extra = None
         if isinstance(loss, (list, tuple)):
@@ -280,15 +291,16 @@ def train_epoch(
     train_meter.log_epoch_stats(cur_epoch)
 
     # --- Compute true training accuracy at epoch-level ---
-    if len(train_meter.all_preds) > 0:
-        all_preds = torch.cat([p.cpu() for p in train_meter.all_preds], dim=0)
-        all_labels = torch.cat([l.cpu() for l in train_meter.all_labels], dim=0)
+    if len(all_preds) > 0:
+        all_preds = torch.cat(all_preds, dim=0)
+        all_labels = torch.cat(all_labels, dim=0)
     
+        # Top-1 accuracy
         top1 = (all_preds.argmax(dim=1) == all_labels).float().mean().item() * 100.0
     
         # Top-5 accuracy
         _, pred_top5 = all_preds.topk(5, dim=1, largest=True, sorted=True)
-        top5 = (pred_top5.eq(all_labels.view(-1,1).expand_as(pred_top5))).any(dim=1).float().mean().item() * 100.0
+        top5 = (pred_top5.eq(all_labels.view(-1, 1).expand_as(pred_top5))).any(dim=1).float().mean().item() * 100.0
     
         print(f"[EPOCH {cur_epoch}] True Training Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
     # --------------------------------------------------------
@@ -316,6 +328,9 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
     model.eval()
     val_meter.iter_tic()
 
+    all_preds = []
+    all_labels = []
+    
     for cur_iter, (inputs, labels, index, time, meta) in enumerate(val_loader):
         if cur_iter == 0:
             print(f"[DEBUG] Sample labels from first batch: {labels[:10].cpu().numpy()}")
@@ -386,6 +401,11 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
             else:
                 preds = model(inputs)
 
+            # Store predictions and labels for full-epoch accuracy computation
+            all_preds.append(preds.detach().cpu())
+            all_labels.append(labels.detach().cpu())
+
+
             if cfg.DATA.MULTI_LABEL:
                 if cfg.NUM_GPUS > 1:
                     preds, labels = du.all_gather([preds, labels])
@@ -437,17 +457,19 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
     
     val_meter.log_epoch_stats(cur_epoch)
 
-    if len(val_meter.all_preds) > 0:
-            all_preds = torch.cat([p.cpu() for p in val_meter.all_preds], dim=0)
-            all_labels = torch.cat([l.cpu() for l in val_meter.all_labels], dim=0)
-        
-            top1 = (all_preds.argmax(dim=1) == all_labels).float().mean().item() * 100.0
-        
-            # Top-5 accuracy
-            _, pred_top5 = all_preds.topk(5, dim=1, largest=True, sorted=True)
-            top5 = (pred_top5.eq(all_labels.view(-1,1).expand_as(pred_top5))).any(dim=1).float().mean().item() * 100.0
-        
-            print(f"[EPOCH {cur_epoch}] True Validation Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
+    if len(all_preds) > 0:
+        all_preds = torch.cat(all_preds, dim=0)
+        all_labels = torch.cat(all_labels, dim=0)
+    
+        # Top-1 accuracy
+        top1 = (all_preds.argmax(dim=1) == all_labels).float().mean().item() * 100.0
+    
+        # Top-5 accuracy
+        _, pred_top5 = all_preds.topk(5, dim=1, largest=True, sorted=True)
+        top5 = (pred_top5.eq(all_labels.view(-1, 1).expand_as(pred_top5))).any(dim=1).float().mean().item() * 100.0
+    
+        print(f"[EPOCH {cur_epoch}] True Training Top-1 Accuracy: {top1:.2f}% | Top-5 Accuracy: {top5:.2f}%")
+
 
     # Compute top-1 accuracy from val_meter
     val_top1 = val_meter.mb_top1_err.get_win_median()
