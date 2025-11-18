@@ -153,6 +153,8 @@ def train_epoch(
             
             # Store predictions and labels for full-epoch accuracy computation
             all_preds.append(preds.detach().cpu())
+
+            labels = labels.view(-1)
             all_labels.append(labels.detach().cpu())
 
 
@@ -294,6 +296,10 @@ def train_epoch(
     if len(all_preds) > 0:
         all_preds = torch.cat(all_preds, dim=0)
         all_labels = torch.cat(all_labels, dim=0)
+
+        # --- FIX: Ensure labels are always 1D ---
+        if all_labels.ndim > 1:
+            all_labels = all_labels.view(-1)
     
         # Top-1 accuracy
         top1 = (all_preds.argmax(dim=1) == all_labels).float().mean().item() * 100.0
@@ -403,6 +409,8 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
 
             # Store predictions and labels for full-epoch accuracy computation
             all_preds.append(preds.detach().cpu())
+
+            labels = labels.view(-1)
             all_labels.append(labels.detach().cpu())
 
 
@@ -460,6 +468,10 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, train_loader, write
     if len(all_preds) > 0:
         all_preds = torch.cat(all_preds, dim=0)
         all_labels = torch.cat(all_labels, dim=0)
+
+        # --- FIX 1: ensure labels are 1D ---
+        if all_labels.ndim > 1:
+            all_labels = all_labels.view(-1)
     
         # Top-1 accuracy
         top1 = (all_preds.argmax(dim=1) == all_labels).float().mean().item() * 100.0
