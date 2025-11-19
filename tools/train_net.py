@@ -187,7 +187,7 @@ def train_epoch(
             scaler.step(optimizer)
         scaler.update()
 
-        if cfg.MIXUP.ENABLE:
+        if cfg.MIXUP.ENABLE and labels.dim() == 2:
             _top_max_k_vals, top_max_k_inds = torch.topk(
                 labels, 2, dim=1, largest=True, sorted=True
             )
