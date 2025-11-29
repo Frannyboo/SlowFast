@@ -16,11 +16,11 @@ from slowfast.datasets import DATASET_REGISTRY
 
 @DATASET_REGISTRY.register()
 class Custom(torch.utils.data.Dataset):
-    def __init__(self, cfg, split="train", num_frames=16, frame_rate=2):
+    def __init__(self, cfg, split="train"):
         self.cfg = cfg
         self.split = split
-        self.num_frames = num_frames
-        self.frame_rate = frame_rate
+        self.num_frames = cfg.DATA.NUM_FRAMES
+        self.frame_rate = cfg.DATA.SAMPLING_RATE
 
         # Path to dataset split
         self.data_path = os.path.join(cfg.DATA.PATH_PREFIX, split)
