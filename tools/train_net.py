@@ -149,7 +149,10 @@ def train_epoch(
                 loss = loss_fun(preds, labels)
 
             if cur_iter == 0 and cur_epoch == 0:
-                print(f"[DEBUG] preds shape: {preds.shape}, labels shape: {labels.shape}")
+                # If preds has multiple views (e.g., [B, 9, 155]), merge views into a single prediction
+                if isinstance(preds, torch.Tensor) and preds.ndim == 3:
+                    preds = preds.mean(dim=1)   # Average over the view dimension
+                    print(f"[DEBUG] preds shape: {preds.shape}, labels shape: {labels.shape}")
             
             # Store predictions and labels for full-epoch accuracy computation
             all_preds.append(preds.detach().cpu())
