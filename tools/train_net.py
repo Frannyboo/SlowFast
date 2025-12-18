@@ -32,6 +32,17 @@ from slowfast.utils.multigrid import MultigridSchedule
 
 logger = logging.get_logger(__name__)
 
+def freeze_x3d_backbone(model):
+    """
+    Freeze early backbone stages (s1–s4) of X3D.
+    Train only s5 and head.
+    """
+    for name, param in model.named_parameters():
+        if name.startswith(("s1", "s2", "s3", "s4")):
+            param.requires_grad = False
+        else:
+            param.requires_grad = True
+
 
 def train_epoch(
     train_loader,
@@ -626,6 +637,15 @@ def train(cfg):
 
     # Build the video model and print model statistics.
     model = build_model(cfg)
+    freeze_x3d_backbone(model)
+
+    # ---- Freeze early X3D backbone stages ----
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    
+    print(f"Trainable params: {trainable:,}")
+    print(f"Total params: {total:,}")
+
     flops, params = 0.0, 0.0
     if du.is_master_proc() and cfg.LOG_MODEL_INFO:
         flops, params = misc.log_model_info(model, cfg, use_train_input=True)
@@ -826,33 +846,6 @@ def train(cfg):
                 cfg,
                 scaler if cfg.TRAIN.MIXED_PRECISION else None,
             )
-        # ==========================================================
-        # ✅ FORCE CHECKPOINT SAVE (manual backup)
-        # ==========================================================        
-        #Build checkpoint path
-        
-        checkpoint_dir = Path(cfg.OUTPUT_DIR)
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)  # ensure folder exists
-        
-        # Filename with current epoch number
-        forced_ckpt_path = checkpoint_dir / f"forced_epoch_{cur_epoch + 1:05d}.pth"
-        
-        # Get model state dict safely (handles DDP models)
-        state_dict = (
-            model.module.state_dict() if hasattr(model, "module") else model.state_dict()
-        )
-        
-        # Build checkpoint dict
-        checkpoint = {
-            "epoch": cur_epoch + 1,
-            "model_state": state_dict,
-            "optimizer_state": optimizer.state_dict(),
-            "cfg": cfg.dump(),
-        }
-        
-        # Save the checkpoint manually
-        torch.save(checkpoint, forced_ckpt_path)
-        print(f"[FORCE SAVE] Checkpoint saved to {forced_ckpt_path}")
 
         
         # Evaluate the model on validation set.
