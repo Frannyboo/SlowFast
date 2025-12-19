@@ -664,7 +664,7 @@ def train(cfg):
     for param in model.head.parameters():
         param.requires_grad = True# 
     
-    ---- Freeze early X3D backbone stages ----
+    #---- Freeze early X3D backbone stages ----
     print("After freezing backbone:")
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
