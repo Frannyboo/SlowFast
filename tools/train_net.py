@@ -32,24 +32,22 @@ from slowfast.utils.multigrid import MultigridSchedule
 
 logger = logging.get_logger(__name__)
 
+
 def freeze_x3d_backbone(model):
     """
     Freeze X3D backbone stages s1–s4.
     Train only s5 and head.
     """
-    # Explicitly freeze modules, not name strings
     for stage_name in ["s1", "s2", "s3", "s4"]:
-        stage = getattr(model, stage_name, None)
-        if stage is not None:
-            for param in stage.parameters():
-                param.requires_grad = False
+        stage = getattr(model, stage_name)
+        for param in stage.parameters():
+            param.requires_grad = False
 
-    # Ensure s5 and head are trainable
+    # Explicitly ensure s5 and head are trainable
     for stage_name in ["s5", "head"]:
-        stage = getattr(model, stage_name, None)
-        if stage is not None:
-            for param in stage.parameters():
-                param.requires_grad = True
+        stage = getattr(model, stage_name)
+        for param in stage.parameters():
+            param.requires_grad = True
 
 
 
