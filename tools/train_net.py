@@ -644,14 +644,36 @@ def train(cfg):
 
     # Build the video model and print model statistics.
     model = build_model(cfg)
-    freeze_x3d_backbone(model)
+    #freeze_x3d_backbone(model)
+    for param in model.parameters():
+        param.requires_grad = False
 
     # ---- Freeze early X3D backbone stages ----
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+
+    print("After freezing all")
+    print(f"Trainable params: {trainable:,}")
+    print(f"Total params: {total:,}")
+
+    # Unfreeze s5
+    for param in model.s5.parameters():
+        param.requires_grad = True
+    
+    # Unfreeze head
+    for param in model.head.parameters():
+        param.requires_grad = True# 
+    
+    ---- Freeze early X3D backbone stages ----
+    print("After freezing backbone:")
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
     
     print(f"Trainable params: {trainable:,}")
     print(f"Total params: {total:,}")
+
+    
+
 
     flops, params = 0.0, 0.0
     if du.is_master_proc() and cfg.LOG_MODEL_INFO:
