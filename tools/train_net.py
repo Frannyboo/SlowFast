@@ -34,14 +34,23 @@ logger = logging.get_logger(__name__)
 
 def freeze_x3d_backbone(model):
     """
-    Freeze early backbone stages (s1–s4) of X3D.
+    Freeze X3D backbone stages s1–s4.
     Train only s5 and head.
     """
-    for name, param in model.named_parameters():
-        if name.startswith(("s1", "s2", "s3", "s4")):
-            param.requires_grad = False
-        else:
-            param.requires_grad = True
+    # Explicitly freeze modules, not name strings
+    for stage_name in ["s1", "s2", "s3", "s4"]:
+        stage = getattr(model, stage_name, None)
+        if stage is not None:
+            for param in stage.parameters():
+                param.requires_grad = False
+
+    # Ensure s5 and head are trainable
+    for stage_name in ["s5", "head"]:
+        stage = getattr(model, stage_name, None)
+        if stage is not None:
+            for param in stage.parameters():
+                param.requires_grad = True
+
 
 
 def train_epoch(
