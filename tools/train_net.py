@@ -656,6 +656,10 @@ def train(cfg):
     print(f"Trainable params: {trainable:,}")
     print(f"Total params: {total:,}")
 
+    # Unfreeze s3
+    for param in model.s3.parameters():
+        param.requires_grad = True
+    
     # Unfreeze s4
     for param in model.s4.parameters():
         param.requires_grad = True
