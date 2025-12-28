@@ -10,14 +10,32 @@ import pickle
 import torch
 import torch.distributed as dist
 
-from pytorchvideo.layers.distributed import (  # noqa
-    cat_all_gather,
-    get_local_process_group,
-    get_local_rank,
-    get_local_size,
-    get_world_size,
-    init_distributed_training as _init_distributed_training,
-)
+# from pytorchvideo.layers.distributed import (  # noqa
+#     cat_all_gather,
+#     get_local_process_group,
+#     get_local_rank,
+#     get_local_size,
+#     get_world_size,
+#     init_distributed_training as _init_distributed_training,
+# )
+
+try:
+    from pytorchvideo.layers.distributed import (
+        cat_all_gather,
+        get_local_process_group,
+        get_local_rank,
+        get_local_size,
+        get_world_size,
+        init_distributed_training,
+    )
+except ImportError:
+    # Single-GPU / inference fallback
+    cat_all_gather = None
+    get_local_process_group = None
+    get_local_rank = lambda: 0
+    get_local_size = lambda: 1
+    get_world_size = lambda: 1
+    init_distributed_training = lambda *args, **kwargs: None
 
 
 def init_distributed_training(cfg):
