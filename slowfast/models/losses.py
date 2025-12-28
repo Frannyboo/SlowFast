@@ -8,7 +8,18 @@ from functools import partial
 import torch
 import torch.nn as nn
 
-from pytorchvideo.losses.soft_target_cross_entropy import SoftTargetCrossEntropyLoss
+# from pytorchvideo.losses.soft_target_cross_entropy import SoftTargetCrossEntropyLoss
+
+try:
+    from pytorchvideo.losses.soft_target_cross_entropy import SoftTargetCrossEntropyLoss
+except ImportError:
+    # Fallback for inference-only usage
+    class SoftTargetCrossEntropyLoss:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                "SoftTargetCrossEntropyLoss is not available. "
+                "This is expected for inference-only usage."
+            )
 
 
 class ContrastiveLoss(nn.Module):
