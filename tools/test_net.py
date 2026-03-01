@@ -189,7 +189,7 @@ def test(cfg):
         flops, params = 0.0, 0.0
         if du.is_master_proc() and cfg.LOG_MODEL_INFO:
             model.eval()
-            #flops, params = misc.log_model_info(model, cfg, use_train_input=False)
+            flops, params = misc.log_model_info(model, cfg, use_train_input=False)
 
         if du.is_master_proc() and cfg.LOG_MODEL_INFO:
             misc.log_model_info(model, cfg, use_train_input=False)
