@@ -39,7 +39,7 @@ except ImportError:
 
 
 def init_distributed_training(cfg):
-    return _init_distributed_training(cfg.NUM_GPUS, cfg.SHARD_ID)
+    return init_distributed_training(cfg.NUM_GPUS, cfg.SHARD_ID)
 
 
 def all_gather(tensors):
