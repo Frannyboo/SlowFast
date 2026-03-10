@@ -76,12 +76,6 @@ class Custom(torch.utils.data.Dataset):
             clip = torch.zeros((3, self.num_frames, 224, 224))
             return [clip], torch.tensor(0), torch.tensor(index), torch.tensor(0), {"video_path": video_path}
 
-        video, _, _ = read_video(video_path, pts_unit="sec")
-        if video.numel() == 0 or video.shape[0] == 0:
-            print(f"[CustomDataset] Empty video: {video_path}")
-            clip = torch.zeros((3, self.num_frames, 224, 224))
-            return [clip], torch.tensor(0), torch.tensor(index), torch.tensor(0), {"video_path": video_path}
-
         # --- Convert to [T, C, H, W] ---
         video = video.permute(0, 3, 1, 2)  # -> [T, C, H, W]
     
@@ -101,20 +95,42 @@ class Custom(torch.utils.data.Dataset):
         # --- Normalize and resize (whole clip at once) ---
         clip = clip.float() / 255.0  # [T, C, H, W]
 
-        # --- Make sure we have [N, C, T, H, W] ---
-        clip = clip.permute(1, 0, 2, 3).unsqueeze(0)  # [1, C, T, H, W]
+        # # --- Make sure we have [N, C, T, H, W] ---
+        # clip = clip.permute(1, 0, 2, 3).unsqueeze(0)  # [1, C, T, H, W]
         
-        # --- Resize the *spatial* dims only ---
-        clip = F.interpolate(
-            clip, 
-            size=(clip.shape[2], 224, 224),  # Keep T same, resize H,W
-            mode="trilinear",                # Use trilinear for 3D tensors
-            align_corners=False
-        )
+        # # --- Resize the *spatial* dims only ---
+        # clip = F.interpolate(
+        #     clip, 
+        #     size=(clip.shape[2], 224, 224),  # Keep T same, resize H,W
+        #     mode="trilinear",                # Use trilinear for 3D tensors
+        #     align_corners=False
+        # )
+        
+        # # --- Normalize ---
+        # clip = (clip - self.mean) / self.std
+        # clip = clip.squeeze(0)  # [C, T, 224, 224]
+
+        # --- Convert to [C, T, H, W] ---
+        clip = clip.permute(1, 0, 2, 3)
+        
+        # --- Resize each frame spatially ---
+        clip = clip.permute(1, 0, 2, 3)  # [T, C, H, W]
+        
+        clip = torch.stack([
+            F.interpolate(
+                frame.unsqueeze(0),
+                size=(224, 224),
+                mode="bilinear",
+                align_corners=False
+            ).squeeze(0)
+            for frame in clip
+        ])
+        
+        # --- Back to [C, T, H, W] ---
+        clip = clip.permute(1, 0, 2, 3)
         
         # --- Normalize ---
         clip = (clip - self.mean) / self.std
-        clip = clip.squeeze(0)  # [C, T, 224, 224]
 
     
         # --- Pathway support (X3D = 1, SlowFast = 2) ---
