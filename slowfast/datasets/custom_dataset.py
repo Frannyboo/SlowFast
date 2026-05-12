@@ -86,67 +86,150 @@ class Custom(torch.utils.data.Dataset):
             video = video.repeat(repeat_factor, 1, 1, 1)
         video = video[:required_len]  # trim extra frames
     
-        # --- Frame sampling ---
-        start_idx = random.randint(0, max(0, video.shape[0] - required_len))
-        indices = start_idx + torch.arange(0, required_len, self.frame_rate)
-        indices = indices.clamp(0, video.shape[0] - 1)
-        clip = video[indices]  # [T, C, H, W]
-    
-        # --- Normalize and resize (whole clip at once) ---
-        clip = clip.float() / 255.0  # [T, C, H, W]
+        # # OLD--- Frame sampling ---
+        # start_idx = random.randint(0, max(0, video.shape[0] - required_len))
+        # indices = start_idx + torch.arange(0, required_len, self.frame_rate)
+        # indices = indices.clamp(0, video.shape[0] - 1)
+        # clip = video[indices]  # [T, C, H, W]
 
-        # # --- Make sure we have [N, C, T, H, W] ---
-        # clip = clip.permute(1, 0, 2, 3).unsqueeze(0)  # [1, C, T, H, W]
+        # --- Frame sampling ---
+        if self.split == "train":
         
-        # # --- Resize the *spatial* dims only ---
-        # clip = F.interpolate(
-        #     clip, 
-        #     size=(clip.shape[2], 224, 224),  # Keep T same, resize H,W
-        #     mode="trilinear",                # Use trilinear for 3D tensors
-        #     align_corners=False
-        # )
+            # Random temporal sampling for training
+            start_idx = random.randint(
+                0,
+                max(0, video.shape[0] - required_len)
+            )
+        
+            indices = start_idx + torch.arange(
+                0,
+                required_len,
+                self.frame_rate
+            )
+        
+            indices = indices.clamp(0, video.shape[0] - 1)
+        
+            clips = [video[indices]]
+        
+        else:
+        
+            # Multi-clip deterministic sampling for validation/test
+        
+            num_test_clips = 5
+        
+            max_start = max(0, video.shape[0] - required_len)
+        
+            clip_positions = np.linspace(
+                0,
+                max_start,
+                num=num_test_clips,
+                dtype=int
+            )
+        
+            clips = []
+        
+            for start_idx in clip_positions:
+        
+                indices = start_idx + torch.arange(
+                    0,
+                    required_len,
+                    self.frame_rate
+                )
+        
+                indices = indices.clamp(0, video.shape[0] - 1)
+        
+                clips.append(video[indices])
+                
+    
+        # # --- Normalize and resize (whole clip at once) ---
+        # clip = clip.float() / 255.0  # [T, C, H, W]
+
+        # # --- Convert to [C, T, H, W] ---
+        # clip = clip.permute(1, 0, 2, 3)
+        
+        # # --- Resize each frame spatially ---
+        # clip = clip.permute(1, 0, 2, 3)  # [T, C, H, W]
+        
+        # clip = torch.stack([
+        #     F.interpolate(
+        #         frame.unsqueeze(0),
+        #         size=(224, 224),
+        #         mode="bilinear",
+        #         align_corners=False
+        #     ).squeeze(0)
+        #     for frame in clip
+        # ])
+        
+        # # --- Back to [C, T, H, W] ---
+        # clip = clip.permute(1, 0, 2, 3)
         
         # # --- Normalize ---
         # clip = (clip - self.mean) / self.std
-        # clip = clip.squeeze(0)  # [C, T, 224, 224]
 
-        # --- Convert to [C, T, H, W] ---
-        clip = clip.permute(1, 0, 2, 3)
+
+        processed_clips = []
+        for clip in clips:
+            # Normalize pixel range
+            clip = clip.float() / 255.0
         
-        # --- Resize each frame spatially ---
-        clip = clip.permute(1, 0, 2, 3)  # [T, C, H, W]
+            # [T,C,H,W] -> resize each frame
+            clip = torch.stack([
+                F.interpolate(
+                    frame.unsqueeze(0),
+                    size=(224, 224),
+                    mode="bilinear",
+                    align_corners=False
+                ).squeeze(0)
+                for frame in clip
+            ])
         
-        clip = torch.stack([
-            F.interpolate(
-                frame.unsqueeze(0),
-                size=(224, 224),
-                mode="bilinear",
-                align_corners=False
-            ).squeeze(0)
-            for frame in clip
-        ])
+            # [T,C,H,W] -> [C,T,H,W]
+            clip = clip.permute(1, 0, 2, 3)
         
-        # --- Back to [C, T, H, W] ---
-        clip = clip.permute(1, 0, 2, 3)
+            # Normalize
+            clip = (clip - self.mean) / self.std
         
-        # --- Normalize ---
-        clip = (clip - self.mean) / self.std
+            processed_clips.append(clip)
 
     
-        # --- Pathway support (X3D = 1, SlowFast = 2) ---
-        inputs = [clip]  # single pathway
-        if self.cfg.MODEL.ARCH in self.cfg.MODEL.MULTI_PATHWAY_ARCH:
-            fast_pathway = clip
-            slow_pathway = clip[:, ::self.cfg.SLOWFAST.ALPHA, :, :]
-            inputs = [slow_pathway, fast_pathway]
+        # # OLD --- Pathway support (X3D = 1, SlowFast = 2) ---
+        # inputs = [clip]  # single pathway
+        # if self.cfg.MODEL.ARCH in self.cfg.MODEL.MULTI_PATHWAY_ARCH:
+        #     fast_pathway = clip
+        #     slow_pathway = clip[:, ::self.cfg.SLOWFAST.ALPHA, :, :]
+        #     inputs = [slow_pathway, fast_pathway]
+
+
+        inputs = []
+        for clip in processed_clips:
+            if self.cfg.MODEL.ARCH in self.cfg.MODEL.MULTI_PATHWAY_ARCH:
+                fast_pathway = clip
+                slow_pathway = clip[:, ::self.cfg.SLOWFAST.ALPHA, :, :]
+                inputs.append([slow_pathway, fast_pathway])
+            else:
+                inputs.append([clip])
+
 
         # print(f"Loaded clip shape: {clip.shape}, label: {label}, path: {video_path}")
         # --- Return tuple ---
+        # return (
+        #     inputs,
+        #     torch.tensor(label, dtype=torch.long),
+        #     torch.tensor(index, dtype=torch.long),
+        #     torch.tensor(0, dtype=torch.long),   # dummy time
+        #     {"video_path": video_path}
+        # )
+
+
+        if self.split == "train":
+            final_inputs = inputs[0]
+        else:
+            final_inputs = inputs
         return (
-            inputs,
+            final_inputs,
             torch.tensor(label, dtype=torch.long),
             torch.tensor(index, dtype=torch.long),
-            torch.tensor(0, dtype=torch.long),   # dummy time
+            torch.tensor(0, dtype=torch.long),
             {"video_path": video_path}
         )
 
@@ -281,66 +364,3 @@ class Custom(torch.utils.data.Dataset):
 #             torch.tensor(0, dtype=torch.long),   # dummy time
 #             {"video_path": video_path}           # meta dict
 #         )
-
-
-# from torch.utils.data import Dataset
-# import torch
-# import os
-# import random
-# from torchvision.io import read_video
-
-# from slowfast.datasets import DATASET_REGISTRY
-
-# @DATASET_REGISTRY.register()
-# class Custom(torch.utils.data.Dataset):
-#     def __init__(self, cfg, split="train", num_frames=16, frame_rate=1, num_clips=3):
-#         self.cfg = cfg
-#         self.split = split
-#         self.num_frames = num_frames
-#         self.frame_rate = frame_rate
-#         self.num_clips = num_clips  # Number of clips to sample per video per __getitem__
-
-#         self.data_path = os.path.join(cfg.DATA.PATH_TO_DATA_DIR, split)
-#         assert os.path.exists(self.data_path), f"Path not found: {self.data_path}"
-
-#         self.classes = sorted(os.listdir(self.data_path))
-#         self.class_to_idx = {cls_name: i for i, cls_name in enumerate(self.classes)}
-
-#         self.samples = []
-#         for cls_name in self.classes:
-#             cls_folder = os.path.join(self.data_path, cls_name)
-#             for vid in os.listdir(cls_folder):
-#                 if vid.endswith(".avi") or vid.endswith(".mp4"):
-#                     self.samples.append((os.path.join(cls_folder, vid), self.class_to_idx[cls_name]))
-
-#         print(f"Loaded {len(self.samples)} videos from {len(self.classes)} classes")
-
-#     def __len__(self):
-#         return len(self.samples)
-
-#     def __getitem__(self, index):
-#         video_path, label = self.samples[index]
-#         video, _, _ = read_video(video_path, pts_unit='sec')  # [T, H, W, C]
-#         video = video.permute(0, 3, 1, 2)  # [T, C, H, W]
-
-#         # Pad if video is shorter than required
-#         required_frames = self.num_frames * self.frame_rate
-#         if video.shape[0] < required_frames:
-#             pad = required_frames - video.shape[0]
-#             video = torch.cat([video, video[-1:].repeat(pad, 1, 1, 1)], dim=0)
-
-#         clips = []
-#         for _ in range(self.num_clips):
-#             # Random start for each clip
-#             start_idx = random.randint(0, video.shape[0] - required_frames)
-#             indices = start_idx + torch.arange(0, required_frames, self.frame_rate)
-#             clip = video[indices]
-#             clip = clip.float() / 255.0
-#             clip = torch.nn.functional.interpolate(clip, size=(224, 224), mode='bilinear', align_corners=False)
-#             clips.append(clip)
-
-#         # Return as [num_clips, num_frames, C, H, W]
-#         clips = torch.stack(clips, dim=0)
-#         meta = {"video_path": video_path}
-
-#         return clips, label, index, meta
