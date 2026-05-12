@@ -6,7 +6,10 @@
 from slowfast.config.defaults import assert_and_infer_cfg
 from slowfast.utils.misc import launch_job
 from slowfast.utils.parser import load_config, parse_args
-from demo_net import demo
+try:
+    from demo_net import demo
+except ImportError:
+    demo = None
 from test_net import test
 from train_net import train
 from visualization import visualize
@@ -43,7 +46,7 @@ def main():
             launch_job(cfg=cfg, init_method=args.init_method, func=visualize)
 
         # Run demo.
-        if cfg.DEMO.ENABLE:
+        if cfg.DEMO.ENABLE and demo is not None:
             demo(cfg)
 
 
