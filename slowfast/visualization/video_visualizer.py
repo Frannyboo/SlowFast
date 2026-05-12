@@ -9,7 +9,10 @@ import numpy as np
 
 import slowfast.utils.logging as logging
 import torch
-from detectron2.utils.visualizer import Visualizer
+try:
+    from detectron2.utils.visualizer import Visualizer
+except ImportError:
+    Visualizer = None
 from slowfast.utils.misc import get_class_names
 
 logger = logging.get_logger(__name__)
