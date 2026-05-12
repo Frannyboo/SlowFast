@@ -71,6 +71,25 @@ def perform_test(test_loader, model, test_meter, cfg, writer=None):
                 # else: leave it as-is (strings, paths, etc.)
         test_meter.data_toc()
 
+        # -----------------------------------------
+        # DEBUG INPUT STRUCTURE
+        # -----------------------------------------
+        if cur_iter == 0:
+            print("\n==== INPUT DEBUG ====")
+            print("Type(inputs):", type(inputs))
+            print("Len(inputs):", len(inputs))
+        
+            if isinstance(inputs, list):
+                print("Type(inputs[0]):", type(inputs[0]))
+        
+                if isinstance(inputs[0], list):
+                    print("Len(inputs[0]):", len(inputs[0]))
+        
+                    if torch.is_tensor(inputs[0][0]):
+                        print("Clip tensor shape:", inputs[0][0].shape)
+        
+            print("=====================\n")
+
         if cfg.DETECTION.ENABLE:
             # Compute the predictions.
             preds = model(inputs, meta["boxes"])
@@ -116,7 +135,28 @@ def perform_test(test_loader, model, test_meter, cfg, writer=None):
             preds = torch.sum(probs, 1)
         else:
             # Perform the forward pass.
-            preds = model(inputs)
+            #preds = model(inputs)
+            # -------------------------------------------------
+            # Multi-clip inference
+            # -------------------------------------------------
+            if isinstance(inputs[0], list):
+                clip_logits = []
+                # inputs structure:
+                # [
+                #   [clip1],
+                #   [clip2],
+                #   ...
+                # ]
+                for clip_input in inputs:
+                    preds_clip = model(clip_input)
+                    clip_logits.append(preds_clip)
+                # Average logits across clips
+                preds = torch.mean(torch.stack(clip_logits), dim=0)
+            else:
+                # Normal single-clip inference
+                preds = model(inputs)
+
+        
         # Gather all the predictions across all the devices to perform ensemble.
         if cfg.NUM_GPUS > 1:
             preds, labels, video_idx = du.all_gather([preds, labels, video_idx])
