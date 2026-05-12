@@ -12,7 +12,10 @@ except ImportError:
     demo = None
 from test_net import test
 from train_net import train
-from visualization import visualize
+try:
+    from visualization import visualize
+except ImportError:
+    visualize = None
 
 
 def main():
