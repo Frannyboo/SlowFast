@@ -12,10 +12,8 @@ except ImportError:
     demo = None
 from test_net import test
 from train_net import train
-try:
-    from visualization import visualize
-except ImportError:
-    visualize = None
+#from visualization import visualize
+
 
 
 def main():
@@ -43,14 +41,11 @@ def main():
                 launch_job(cfg=cfg, init_method=args.init_method, func=test)
 
         # Perform model visualization.
-        if (visualize is not None
-            and cfg.TENSORBOARD.ENABLE
-            and (
-                cfg.TENSORBOARD.MODEL_VIS.ENABLE
-                or cfg.TENSORBOARD.WRONG_PRED_VIS.ENABLE
-            )
-        ):
-            launch_job(cfg=cfg, init_method=args.init_method, func=visualize)
+        # if cfg.TENSORBOARD.ENABLE and (
+        #     cfg.TENSORBOARD.MODEL_VIS.ENABLE
+        #     or cfg.TENSORBOARD.WRONG_PRED_VIS.ENABLE
+        # ):
+        #     launch_job(cfg=cfg, init_method=args.init_method, func=visualize)
 
         # Run demo.
         if cfg.DEMO.ENABLE and demo is not None:
