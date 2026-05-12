@@ -8,7 +8,10 @@ from functools import partial
 import slowfast.utils.logging as logging
 import torch
 import torch.nn as nn
-from detectron2.layers import ROIAlign
+try:
+    from detectron2.layers import ROIAlign
+except ImportError:
+    ROIAlign = None
 from slowfast.models.attention import MultiScaleBlock
 from slowfast.models.batchnorm_helper import (
     NaiveSyncBatchNorm1d as NaiveSyncBatchNorm1d,
